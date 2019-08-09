@@ -1,0 +1,8 @@
+# Pymesos test project
+
+To run:
+
+```
+$ docker-compose up
+```
+

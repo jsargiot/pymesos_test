@@ -1,0 +1,53 @@
+version: "2.0"
+services:
+
+    zk:
+        image: zookeeper:3.4.14
+        #volumes:
+        #    - ./zk/data:/data:rw
+        #    - ./zk/datalog:/datalog:rw
+        environment:
+            ZOO_MY_ID: 1
+            ZOO_LOG4J_PROP: INFO
+
+    master:
+        image: mesosphere/mesos-master:1.7.1
+        #volumes:
+            #- ./mesos/master/var/lib/mesos:/var/lib/mesos:rw
+        environment:
+            MESOS_CLUSTER: mesostest
+            MESOS_QUORUM: 1
+            MESOS_ZK: zk://zk:2181/mesostest
+            MESOS_WORK_DIR: /var/lib/mesos
+            MESOS_OFFER_TIMEOUT: 1mins
+        ports:
+            - 5050:5050
+        depends_on:
+            - zk
+
+    agent:
+        image: mesosphere/mesos-slave:1.7.1
+        volumes:
+            #- ./mesos/agent/var/lib/mesos:/var/lib/mesos:rw
+            - /var/run/docker.sock:/var/run/docker.sock:rw
+            - /usr/local/bin/docker:/usr/local/bin/docker:ro
+            - /cgroup:/cgroup:rw
+            - /sys:/sys:rw
+        environment:
+            MESOS_PORT: 5051
+            MESOS_STRICT: "true"
+            MESOS_MASTER: zk://zk:2181/mesostest
+            MESOS_WORK_DIR: /var/lib/mesos
+            MESOS_HOSTNAME_LOOKUP: "false"
+            MESOS_SYSTEMD_ENABLE_SUPPORT: "false"
+            MESOS_DEFAULT_ROLE: "*"
+            MESOS_CONTAINERIZERS: docker,mesos
+        pid: host
+        depends_on:
+            - master
+
+    python:
+        build: ./framework
+        depends_on:
+            - agent
+
